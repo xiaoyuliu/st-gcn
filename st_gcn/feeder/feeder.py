@@ -40,7 +40,8 @@ class Feeder(torch.utils.data.Dataset):
                  random_move=False,
                  window_size=-1,
                  normalization=False,
-                 debug=False):
+                 debug=False,
+                 mmap=False):
         self.debug = debug
         self.data_path = data_path
         self.label_path = label_path
@@ -50,11 +51,11 @@ class Feeder(torch.utils.data.Dataset):
         self.window_size = window_size
         self.normalization = normalization
 
-        self.load_data()
+        self.load_data(mmap)
         if normalization:
             self.get_mean_map()
 
-    def load_data(self):
+    def load_data(self, mmap):
         # data: N C V T M
 
         # load label
@@ -75,8 +76,11 @@ class Feeder(torch.utils.data.Dataset):
             raise ValueError()
 
         # load data
-        self.data = np.load(self.data_path)
-
+        if mmap:
+            self.data = np.load(self.data_path, mmap_mode='r')
+        else:
+            self.data = np.load(self.data_path)
+            
         if self.debug:
             self.label = self.label[0:100]
             self.data = self.data[0:100]
@@ -101,9 +105,9 @@ class Feeder(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         # get data
-        data_numpy = self.data[index]
+        data_numpy = np.array(self.data[index])
         label = self.label[index]
-
+        
         # normalization
         if self.normalization:
             data_numpy = (data_numpy - self.mean_map) / self.std_map
